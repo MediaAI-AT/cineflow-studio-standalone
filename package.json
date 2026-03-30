@@ -1,0 +1,17 @@
+{
+  "name": "cineflow-standalone",
+  "version": "1.0.0",
+  "description": "CineFlow Studio — Standalone AI Music Video Production Pipeline",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

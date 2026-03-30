@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CineFlow Studio — Rubric</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #000;
+    --surface: #0a0a0a;
+    --surface2: #111;
+    --surface3: #151515;
+    --border: #1a1a1a;
+    --border2: #222;
+    --text: #fff;
+    --text2: #999;
+    --text3: #555;
+    --accent: #f5a623;
+    --accent-dim: rgba(245,166,35,0.12);
+    --accent-hover: rgba(245,166,35,0.2);
+    --green: #30d158;
+    --red: #ff453a;
+    --radius: 8px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  .layout {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ── COL 1: PROJECT LIST ── */
+  .col-projects {
+    width: 220px;
+    min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .col-header {
+    padding: 14px 12px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .col-header .icon {
+    width: 28px;
+    height: 28px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .col-header h1 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .col-header p {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+
+  .project-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+  }
+
+  .project-list::-webkit-scrollbar { width: 3px; }
+  .project-list::-webkit-scrollbar-track { background: transparent; }
+  .project-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .project-item {
+    padding: 8px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 2px;
+  }
+
+  .project-item:hover { background: var(--surface2); border-color: var(--border); }
+  .project-item.active { background: var(--accent-dim); border-color: rgba(245,166,35,0.3); }
+
+  .project-thumb {
+    width: 40px; height: 30px;
+    border-radius: 3px; object-fit: cover;
+    background: var(--border); flex-shrink: 0;
+    border: 1px solid var(--border2);
+  }
+
+  .project-thumb-placeholder {
+    width: 40px; height: 30px;
+    border-radius: 3px; background: var(--border);
+    border: 1px solid var(--border2); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--text3);
+  }
+
+  .project-info { flex: 1; min-width: 0; }
+
+  .project-name {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
+  }
+
+  .project-item.active .project-name { color: var(--accent); }
+
+  .project-badges { display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap; }
+
+  .badge {
+    font-size: 9px; padding: 1px 4px;
+    border-radius: 3px; font-weight: 500; line-height: 1.4;
+  }
+  .badge-img { background: rgba(88,171,245,0.15); color: #58abf5; }
+  .badge-vid { background: rgba(245,166,35,0.12); color: var(--accent); }
+  .badge-done { background: rgba(48,209,88,0.12); color: var(--green); }
+
+  .sidebar-empty {
+    padding: 20px 12px; text-align: center;
+    color: var(--text3); font-size: 12px; line-height: 1.6;
+  }
+
+  /* ── COL 2: INPUT PANEL ── */
+  .col-input {
+    width: 320px;
+    min-width: 320px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .input-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .input-scroll::-webkit-scrollbar { width: 3px; }
+  .input-scroll::-webkit-scrollbar-track { background: transparent; }
+  .input-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .input-section {
+    margin-bottom: 20px;
+  }
+
+  .input-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .input-label .count-badge {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 1px 6px;
+    color: var(--text2);
+  }
+
+  textarea.cf-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+
+  textarea.cf-input:focus { border-color: var(--accent); }
+  textarea.cf-input::placeholder { color: var(--text3); }
+
+  input[type="text"].cf-input,
+  input[type="number"].cf-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"].cf-input:focus,
+  input[type="number"].cf-input:focus { border-color: var(--accent); }
+
+  .scenes-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .scenes-row input[type="number"] {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .scenes-row input[type="number"]:focus { border-color: var(--accent); }
+
+  .toggle-btn {
+    padding: 7px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text2);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  .toggle-btn:hover { background: var(--surface3); border-color: var(--border2); }
+  .toggle-btn.active { background: var(--accent-dim); border-color: rgba(245,166,35,0.4); color: var(--accent); }
+
+  .scenes-hint {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  .lang-row { display: flex; gap: 6px; }
+
+  .lang-btn {
+    padding: 7px 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text2);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .lang-btn:hover { border-color: rgba(245,166,35,0.3); color: var(--text); }
+  .lang-btn.active { background: var(--accent-dim); border-color: rgba(245,166,35,0.5); color: var(--accent); }
+
+  /* Drop zones */
+  .drop-zone {
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: rgba(245,166,35,0.4);
+    background: var(--accent-dim);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+  }
+  .drop-zone-icon, .drop-zone-text { pointer-events: none; }
+
+  .drop-zone-icon { font-size: 20px; margin-bottom: 6px; }
+  .drop-zone-text { font-size: 12px; color: var(--text3); line-height: 1.4; }
+  .drop-zone-text strong { color: var(--text2); }
+
+  /* Ref thumbnails */
+  .ref-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .ref-thumb {
+    position: relative;
+    width: 56px;
+    height: 56px;
+  }
+
+  .ref-thumb img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    display: block;
+  }
+
+  .ref-thumb .remove-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    background: var(--red);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .ref-thumb:hover .remove-btn { opacity: 1; }
+
+  /* Audio files list */
+  .audio-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+
+  .audio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .audio-item:hover { border-color: rgba(245,166,35,0.3); }
+  .audio-item.selected { background: var(--accent-dim); border-color: rgba(245,166,35,0.4); }
+
+  .audio-item .audio-icon { font-size: 14px; flex-shrink: 0; }
+  .audio-item .audio-name { flex: 1; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .audio-item .audio-dur { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+  .audio-item .audio-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 3px; transition: color 0.12s; }
+  .audio-item .audio-del:hover { color: var(--red); }
+
+  /* Slug field */
+  .slug-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .slug-hint span { color: var(--accent); font-weight: 500; }
+
+  /* Run button */
+  .run-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .run-btn:hover { opacity: 0.9; }
+  .run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Progress panel */
+  .progress-panel {
+    margin-top: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 14px;
+    display: none;
+  }
+
+  .progress-panel.visible { display: block; }
+
+  .progress-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+    color: var(--text3);
+    transition: color 0.2s;
+  }
+
+  .progress-step.active { color: var(--text); }
+  .progress-step.done { color: var(--green); }
+  .progress-step.error { color: var(--red); }
+
+  .step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .progress-step.active .step-dot { background: var(--accent); animation: pulse 1s infinite; }
+  .progress-step.done .step-dot { background: var(--green); animation: none; }
+  .progress-step.error .step-dot { background: var(--red); animation: none; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .progress-log {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text3);
+    max-height: 80px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    line-height: 1.6;
+  }
+
+  /* ── COL 3: PROJECT VIEWER ── */
+  .col-viewer {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .col-viewer::-webkit-scrollbar { width: 4px; }
+  .col-viewer::-webkit-scrollbar-track { background: transparent; }
+  .col-viewer::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .welcome {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: 48px;
+    text-align: center;
+  }
+
+  .welcome-icon { font-size: 42px; }
+  .welcome h2 { font-size: 20px; font-weight: 600; color: var(--text); }
+  .welcome p { font-size: 13px; color: var(--text2); max-width: 320px; line-height: 1.6; }
+
+  .project-detail { padding: 20px; }
+
+  .project-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 18px; gap: 12px;
+  }
+
+  .project-title { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .project-desc { font-size: 13px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+
+  .stats-row { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+
+  .stat-chip { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+  .stat-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text3); margin-bottom: 10px;
+  }
+
+  .video-section { margin-bottom: 24px; }
+
+  .video-player {
+    width: 100%; max-height: 380px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #000; display: block;
+  }
+
+  .duration-section {
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .duration-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .duration-title { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  .bulk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .bulk-label { font-size: 11px; color: var(--text3); white-space: nowrap; }
+  .bulk-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  .bulk-btn {
+    padding: 3px 7px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 4px; color: var(--text2);
+    font-size: 11px; font-family: 'Outfit', sans-serif;
+    cursor: pointer; transition: all 0.12s; font-weight: 500;
+  }
+
+  .bulk-btn:hover { background: var(--accent-dim); border-color: rgba(245,166,35,0.3); color: var(--accent); }
+
+  .save-btn {
+    margin-top: 10px; padding: 7px 16px;
+    background: var(--accent); border: none; border-radius: 6px;
+    color: #000; font-size: 12px; font-weight: 600;
+    font-family: 'Outfit', sans-serif; cursor: pointer; transition: opacity 0.15s;
+  }
+
+  .save-btn:hover { opacity: 0.85; }
+  .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .save-feedback {
+    display: inline-block; margin-left: 8px;
+    font-size: 11px; color: var(--green); opacity: 0; transition: opacity 0.3s;
+  }
+
+  .save-feedback.show { opacity: 1; }
+
+  .scenes-section { margin-bottom: 28px; }
+
+  .scenes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  @media (max-width: 1400px) { .scenes-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 1100px) { .scenes-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .scene-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .scene-card:hover { border-color: var(--border2); }
+
+  .scene-img-wrap {
+    position: relative; aspect-ratio: var(--scene-ar, 16/9);
+    background: var(--border); overflow: hidden;
+  }
+
+  .scene-img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block; transition: opacity 0.2s;
+  }
+
+  .scene-img[data-loaded="false"] { opacity: 0; }
+
+  .scene-num {
+    position: absolute; top: 5px; left: 5px;
+    background: rgba(0,0,0,0.7); color: #fff;
+    font-size: 9px; font-weight: 600; padding: 2px 5px; border-radius: 3px;
+  }
+
+  .scene-vid-badge {
+    position: absolute; top: 5px; right: 5px;
+    background: rgba(245,166,35,0.9); color: #000;
+    font-size: 8px; font-weight: 700;
+    padding: 2px 5px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  .scene-footer {
+    padding: 7px 8px;
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 5px;
+  }
+
+  .scene-label { font-size: 10px; color: var(--text3); font-weight: 500; }
+
+  .dur-select {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 4px; color: var(--text);
+    font-size: 11px; font-family: 'Outfit', sans-serif;
+    padding: 2px 5px; cursor: pointer; outline: none;
+    transition: border-color 0.12s;
+  }
+
+  .dur-select:focus { border-color: var(--accent); }
+
+  .loader {
+    display: flex; align-items: center;
+    justify-content: center; padding: 50px;
+    color: var(--text3); font-size: 13px; gap: 8px;
+  }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .action-btn { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .action-btn:hover { border-color: rgba(245,166,35,0.5); background: var(--accent-dim); }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- COL 1: PROJECT LIST -->
+  <aside class="col-projects">
+    <div class="col-header">
+      <div class="icon">🎬</div>
+      <div>
+        <h1>Productions</h1>
+        <p>Existing projects</p>
+      </div>
+    </div>
+    <div class="project-list" id="projectList">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </aside>
+
+  <!-- COL 2: INPUT PANEL -->
+  <aside class="col-input">
+    <div class="col-header">
+      <div class="icon">✨</div>
+      <div>
+        <h1>New Production</h1>
+        <p>Configure &amp; run pipeline</p>
+      </div>
+    </div>
+
+    <div class="input-scroll">
+
+      <!-- Project Slug -->
+      <div class="input-section">
+        <div class="input-label">Project Name</div>
+        <input type="text" class="cf-input" id="slugInput" placeholder="e.g. my-music-video" />
+        <div class="slug-hint">Slug: <span id="slugPreview">my-music-video</span></div>
+      </div>
+
+      <!-- Description -->
+      <div class="input-section">
+        <div class="input-label">Description</div>
+        <textarea class="cf-input" id="descInput" placeholder="Describe your video concept, character, mood, setting..."></textarea>
+      </div>
+
+      <!-- Scenes -->
+      <div class="input-section">
+        <div class="input-label">Scenes</div>
+        <div class="scenes-row">
+          <input type="number" id="scenesInput" min="2" max="100" value="12" />
+          <button class="toggle-btn" id="autoScenesBtn">Auto</button>
+        </div>
+        <div class="scenes-hint" id="scenesHint"></div>
+      </div>
+
+      <!-- Language -->
+      <div class="input-section">
+        <div class="input-label">Language</div>
+        <div class="lang-row">
+          <button class="lang-btn active" data-lang="EN">EN</button>
+          <button class="lang-btn" data-lang="DE">DE</button>
+        </div>
+      </div>
+
+      <!-- Reference Photos -->
+      <div class="input-section">
+        <div class="input-label">
+          Reference Photos <span style="color:var(--text3);font-weight:400;font-size:10px;">(optional)</span>
+          <span class="count-badge" id="refCount">0 / 6</span>
+        </div>
+        <div class="ref-grid" id="refGrid"></div>
+        <div class="drop-zone" id="refDropZone">
+          <input type="file" id="refFileInput" accept="image/*" multiple />
+          <div class="drop-zone-icon">🖼️</div>
+          <div class="drop-zone-text"><strong>Drop images or click to browse</strong><br>PNG, JPG up to 6 files</div>
+        </div>
+      </div>
+
+      <!-- Audio -->
+      <div class="input-section">
+        <div class="input-label">Audio / Music <span style="color:var(--text3);font-weight:400;font-size:10px;">(optional)</span></div>
+        <div class="audio-list" id="audioList"></div>
+        <div class="drop-zone" id="audioDropZone">
+          <input type="file" id="audioFileInput" accept="audio/*,.mp3,.wav" />
+          <div class="drop-zone-icon">🎵</div>
+          <div class="drop-zone-text"><strong>Drop MP3/WAV or click to browse</strong></div>
+        </div>
+      </div>
+
+      <!-- Run button -->
+      <div class="input-section">
+        <button class="run-btn" id="runBtn" disabled>Run Pipeline</button>
+
+        <!-- Progress panel -->
+        <div class="progress-panel" id="progressPanel">
+          <div class="progress-step" id="stepAnalyze" data-step="analyze">
+            <div class="step-dot"></div>
+            <span>Analyzing audio &amp; references...</span>
+          </div>
+          <div class="progress-step" id="stepGenerate" data-step="generate">
+            <div class="step-dot"></div>
+            <span>Generating script &amp; scenes...</span>
+          </div>
+          <div class="progress-step" id="stepImages" data-step="images">
+            <div class="step-dot"></div>
+            <span id="imagesLabel">Generating images...</span>
+          </div>
+          <div class="progress-step" id="stepDone" data-step="done">
+            <div class="step-dot"></div>
+            <span id="doneLabel">Done!</span>
+          </div>
+          <div class="progress-log" id="progressLog"></div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- COL 3: PROJECT VIEWER -->
+  <main class="col-viewer" id="colViewer">
+    <div class="welcome" id="welcomeScreen">
+      <div class="welcome-icon">🎞️</div>
+      <h2>Select a Production</h2>
+      <p>Choose a project from the left to view scenes, configure clip durations, and play the final video.</p>
+    </div>
+    <div class="project-detail" id="projectDetail" style="display:none;"></div>
+  </main>
+
+</div>
+
+<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;" onclick="const v=document.getElementById('lightboxVideo');v.pause();v.src='';this.style.display='none'">
+  <img id="lightboxImg" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);" />
+  <video id="lightboxVideo" controls autoplay loop style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);" onclick="event.stopPropagation()"></video>
+  <div id="lightboxCaption" style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;opacity:0.7;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;"></div>
+</div>
+
+<script>
+  const BASE = '';
+  let projects = [];
+  let activeSlug = null;
+  let currentProject = null;
+  let durations = {};
+  let selectedLang = 'EN';
+  let selectedRefs = [];     // filenames of selected ref images
+  let selectedAudio = null;  // filename of selected audio
+  let audioDurations = {};   // filename -> duration in seconds
+  let autoScenes = false;
+
+  // ── WebSocket connection ──
+  let ws = null;
+  function connectWS() {
+    try {
+      ws = new WebSocket(`ws://localhost:5050`);
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'pipeline:progress') {
+            handlePipelineProgress(msg);
+            const statusEl = document.querySelector('#actionStatus');
+            function log(msg2, color) { if (statusEl) { statusEl.style.display='block'; statusEl.style.color = color||'#50e3c2'; statusEl.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${msg2}</div>`; statusEl.scrollTop=statusEl.scrollHeight; } }
+            if (msg.step === 'videos') {
+              const genBtn = document.querySelector('#genVideosBtn');
+              if (msg.action === 'submitted') { log(`Scene ${msg.sceneId} submitted → task ${(msg.taskId||'').slice(0,8)}...`); if(genBtn) genBtn.textContent = `⏳ Submitted ${msg.sceneId}...`; }
+              if (msg.action === 'submit_error') log(`Scene ${msg.sceneId} submit error: ${msg.error}`, '#ff6b6b');
+              if (msg.action === 'done') { log(`✓ Scene ${msg.sceneId} video ready`); if(genBtn) genBtn.textContent = `⏳ Scene ${msg.sceneId} done`; }
+              if (msg.action === 'complete') {
+                log('✅ All videos generated!', '#50e3c2');
+                if (genBtn) { genBtn.textContent = '✅ Videos Done'; genBtn.disabled = false; }
+                if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+              }
+              if (msg.action === 'error') { log('✗ Video error: ' + msg.error, '#ff6b6b'); if(genBtn) { genBtn.textContent = '❌ Error'; genBtn.disabled = false; } }
+            }
+            if (msg.step === 'redownload') {
+              const rdBtn = document.querySelector('#redownloadBtn');
+              if (msg.action === 'start') log(`Re-downloading ${msg.total} clips from WaveSpeed...`);
+              if (msg.action === 'done') log(`✓ Scene ${msg.sceneId} downloaded`);
+              if (msg.action === 'skip') log(`↷ Scene ${msg.sceneId} already exists, skipped`);
+              if (msg.action === 'not_ready') log(`⏳ Scene ${msg.sceneId} not ready yet (${msg.status})`, '#f0c050');
+              if (msg.action === 'complete') {
+                log(`✅ Done — ${msg.downloaded} downloaded, ${msg.skipped} skipped, ${msg.failed} failed`, '#50e3c2');
+                if (rdBtn) { rdBtn.textContent = '✅ Done'; rdBtn.disabled = false; }
+                if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+              }
+              if (msg.action === 'error') { log('✗ Re-download error: ' + (msg.error || ''), '#ff6b6b'); if(rdBtn) { rdBtn.textContent = '⬇️ Re-download Clips'; rdBtn.disabled = false; } }
+            }
+            if (msg.step === 'merge') {
+              const mb = document.querySelector('#mergeBtn');
+              if (msg.action === 'started') log(`FFmpeg started — merging ${msg.clips} clips...`);
+              if (msg.action === 'complete') {
+                log('✅ Merged: ' + msg.outputFile, '#50e3c2');
+                if (mb) { mb.textContent = '✅ Merged!'; mb.disabled = false; }
+                if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+              }
+              if (msg.action === 'error') { log('✗ FFmpeg error: ' + msg.error, '#ff6b6b'); if(mb) { mb.textContent = '❌ FFmpeg Error'; mb.disabled = false; } }
+            }
+          }
+        } catch {}
+      };
+      ws.onclose = () => setTimeout(connectWS, 3000);
+      ws.onerror = () => {};
+    } catch {}
+  }
+  connectWS();
+
+  // ── Poll pipeline status as fallback ──
+  let pollInterval = null;
+  function startPolling() {
+    if (pollInterval) return;
+    pollInterval = setInterval(async () => {
+      try {
+        const r = await fetch(`${BASE}/api/cineflow/run/status`);
+        const s = await r.json();
+        handlePipelineProgress(s);
+        if (s.status === 'done' || s.status === 'error' || s.status === 'idle') {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      } catch {}
+    }, 3000);
+  }
+
+  // ── Pipeline progress handler ──
+  function handlePipelineProgress(state) {
+    if (!state || !state.status) return;
+    const panel = document.getElementById('progressPanel');
+    panel.classList.add('visible');
+
+    const steps = ['analyze', 'generate', 'images'];
+    const stepEls = {
+      analyze: document.getElementById('stepAnalyze'),
+      generate: document.getElementById('stepGenerate'),
+      images: document.getElementById('stepImages'),
+      done: document.getElementById('stepDone'),
+    };
+
+    if (state.status === 'idle') {
+      panel.classList.remove('visible');
+      return;
+    }
+
+    // Mark steps done/active/pending
+    let passedCurrent = false;
+    for (const s of steps) {
+      const el = stepEls[s];
+      if (!el) continue;
+      el.className = 'progress-step';
+      if (state.status === 'error' && state.step === s) {
+        el.classList.add('error');
+        passedCurrent = true;
+      } else if (s === state.step && state.status === 'running') {
+        el.classList.add('active');
+        passedCurrent = true;
+      } else if (!passedCurrent) {
+        el.classList.add('done');
+      }
+    }
+
+    // Images step label
+    if (state.step === 'images' && state.total > 0) {
+      document.getElementById('imagesLabel').textContent = `Generating images ${state.current || 0} / ${state.total}...`;
+    }
+
+    // Done step
+    const doneEl = stepEls.done;
+    if (state.status === 'done') {
+      doneEl.className = 'progress-step done';
+      document.getElementById('doneLabel').textContent = '✓ Done! Refresh to view project.';
+      document.getElementById('runBtn').disabled = false;
+      // Auto-reload project list
+      loadProjects().then(() => {
+        if (state.slug) selectProject(state.slug);
+      });
+    } else if (state.status === 'error') {
+      doneEl.className = 'progress-step error';
+      document.getElementById('doneLabel').textContent = 'Error: ' + (state.error || 'unknown');
+      document.getElementById('runBtn').disabled = false;
+    } else {
+      doneEl.className = 'progress-step';
+    }
+
+    // Logs
+    if (state.logs && state.logs.length) {
+      const logEl = document.getElementById('progressLog');
+      logEl.textContent = state.logs.join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
+
+  // ── Slug helper ──
+  function toSlug(s) {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  const slugInput = document.getElementById('slugInput');
+  const slugPreview = document.getElementById('slugPreview');
+  slugInput.addEventListener('input', () => {
+    const slug = toSlug(slugInput.value || 'my-music-video');
+    slugPreview.textContent = slug || 'my-music-video';
+    validateForm();
+  });
+
+  document.getElementById('descInput').addEventListener('input', validateForm);
+
+  // ── Language buttons ──
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedLang = btn.dataset.lang;
+    });
+  });
+
+  // ── Scenes auto toggle ──
+  const autoBtn = document.getElementById('autoScenesBtn');
+  const scenesInput = document.getElementById('scenesInput');
+  const scenesHint = document.getElementById('scenesHint');
+
+  autoBtn.addEventListener('click', () => {
+    autoScenes = !autoScenes;
+    autoBtn.classList.toggle('active', autoScenes);
+    scenesInput.disabled = autoScenes;
+    updateScenesFromAudio();
+  });
+
+  scenesInput.addEventListener('input', () => {
+    if (!autoScenes) updateScenesHint(parseInt(scenesInput.value) || 0, null);
+  });
+
+  function updateScenesFromAudio() {
+    if (!autoScenes || !selectedAudio) { updateScenesHint(parseInt(scenesInput.value) || 0, null); return; }
+    const dur = audioDurations[selectedAudio];
+    if (!dur) return;
+    const count = Math.max(2, Math.round(dur / 5));
+    scenesInput.value = count;
+    updateScenesHint(count, dur);
+  }
+
+  function updateScenesHint(count, durSec) {
+    if (!count) { scenesHint.textContent = ''; return; }
+    if (durSec) {
+      const clipLen = (durSec / count).toFixed(1);
+      const m = Math.floor(durSec / 60);
+      const s = Math.round(durSec % 60);
+      const durStr = `${m}:${String(s).padStart(2,'0')}`;
+      scenesHint.textContent = `~${count} scenes · ${clipLen}s per clip · audio ${durStr}`;
+    } else {
+      scenesHint.textContent = `${count} scenes`;
+    }
+  }
+
+  // ── Reference image upload ──
+  const refDropZone = document.getElementById('refDropZone');
+  const refFileInput = document.getElementById('refFileInput');
+
+  refDropZone.addEventListener('dragover', e => { e.preventDefault(); refDropZone.classList.add('drag-over'); });
+  refDropZone.addEventListener('dragleave', () => refDropZone.classList.remove('drag-over'));
+  refDropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    refDropZone.classList.remove('drag-over');
+    handleRefFiles(e.dataTransfer.files);
+  });
+
+  refFileInput.addEventListener('change', () => {
+    handleRefFiles(refFileInput.files);
+    refFileInput.value = '';
+  });
+
+  async function handleRefFiles(files) {
+    for (const file of files) {
+      if (selectedRefs.length >= 6) break;
+      if (selectedRefs.includes(file.name)) continue;
+      await uploadInputFile('ref', file);
+    }
+  }
+
+  async function uploadInputFile(type, file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const dataUrl = e.target.result;
+        const base64 = dataUrl.split(',')[1];
+        try {
+          const resp = await fetch(`${BASE}/api/cineflow/save-input`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, filename: file.name, data: base64, mimeType: file.type }),
+          });
+          const json = await resp.json();
+          if (json.ok) {
+            if (type === 'ref') {
+              if (!selectedRefs.includes(file.name)) selectedRefs.push(file.name);
+              renderRefGrid();
+            } else if (type === 'audio') {
+              getAudioDuration(file, file.name, () => {
+                loadInputFiles().then(() => {
+                  selectAudio(file.name);
+                  if (autoScenes) updateScenesFromAudio();
+                });
+              });
+            }
+          }
+        } catch {}
+        resolve();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderRefGrid() {
+    const grid = document.getElementById('refGrid');
+    const count = document.getElementById('refCount');
+    count.textContent = `${selectedRefs.length} / 6`;
+    grid.innerHTML = selectedRefs.map(name => `
+      <div class="ref-thumb">
+        <img src="/media/cineflow/input/reference-images/${encodeURIComponent(name)}" alt="${name}" title="${name}" />
+        <button class="remove-btn" data-name="${name}" title="Remove">✕</button>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        selectedRefs = selectedRefs.filter(r => r !== name);
+        await fetch(`${BASE}/api/cineflow/input-file`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'ref', filename: name }),
+        }).catch(() => {});
+        renderRefGrid();
+      });
+    });
+    // If >= 6, hide drop zone
+    refDropZone.style.display = selectedRefs.length >= 6 ? 'none' : '';
+    validateForm();
+  }
+
+  // ── Audio upload ──
+  const audioDropZone = document.getElementById('audioDropZone');
+  const audioFileInput = document.getElementById('audioFileInput');
+
+  audioDropZone.addEventListener('dragover', e => { e.preventDefault(); audioDropZone.classList.add('drag-over'); });
+  audioDropZone.addEventListener('dragleave', () => audioDropZone.classList.remove('drag-over'));
+  audioDropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    audioDropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleAudioFile(e.dataTransfer.files[0]);
+  });
+
+  audioFileInput.addEventListener('change', () => {
+    if (audioFileInput.files[0]) handleAudioFile(audioFileInput.files[0]);
+    audioFileInput.value = '';
+  });
+
+  async function handleAudioFile(file) {
+    await uploadInputFile('audio', file);
+  }
+
+  function getAudioDuration(fileOrUrl, name, cb) {
+    const audio = new Audio();
+    if (fileOrUrl instanceof File) {
+      audio.src = URL.createObjectURL(fileOrUrl);
+    } else {
+      audio.src = fileOrUrl;
+    }
+    audio.onloadedmetadata = () => {
+      audioDurations[name] = audio.duration;
+      if (cb) cb(audio.duration);
+    };
+    audio.onerror = () => { if (cb) cb(null); };
+  }
+
+  function addAudioToList(filename) {
+    if (!document.querySelector(`.audio-item[data-name="${CSS.escape(filename)}"]`)) {
+      // Will be picked up on next renderAudioList call
+    }
+    // Just select it
+    selectAudio(filename);
+  }
+
+  function renderAudioList(audioFiles) {
+    const list = document.getElementById('audioList');
+    if (!audioFiles || !audioFiles.length) { list.innerHTML = ''; return; }
+    list.innerHTML = audioFiles.map(name => `
+      <div class="audio-item ${selectedAudio === name ? 'selected' : ''}" data-name="${name}">
+        <span class="audio-icon">🎵</span>
+        <span class="audio-name" title="${name}">${name}</span>
+        <span class="audio-dur" id="dur-${CSS.escape(name)}">—</span>
+        <button class="audio-del" data-name="${name}" title="Remove">✕</button>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.audio-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('audio-del')) return;
+        selectAudio(el.dataset.name);
+      });
+    });
+
+    list.querySelectorAll('.audio-del').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const name = btn.dataset.name;
+        await fetch(`${BASE}/api/cineflow/input-file`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'audio', filename: name }),
+        }).catch(() => {});
+        if (selectedAudio === name) selectedAudio = null;
+        loadInputFiles();
+      });
+    });
+
+    // Load durations for displayed files
+    for (const name of audioFiles) {
+      if (audioDurations[name]) {
+        updateAudioDurDisplay(name, audioDurations[name]);
+      } else {
+        getAudioDuration(`/media/cineflow/input/audio/${encodeURIComponent(name)}`, name, (dur) => {
+          if (dur) updateAudioDurDisplay(name, dur);
+        });
+      }
+    }
+  }
+
+  function updateAudioDurDisplay(name, dur) {
+    const el = document.getElementById(`dur-${CSS.escape(name)}`);
+    if (!el) return;
+    const m = Math.floor(dur / 60);
+    const s = Math.round(dur % 60);
+    el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+    if (autoScenes && selectedAudio === name) updateScenesFromAudio();
+  }
+
+  function selectAudio(name) {
+    selectedAudio = name;
+    document.querySelectorAll('.audio-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.name === name);
+    });
+    if (autoScenes) updateScenesFromAudio();
+    validateForm();
+  }
+
+  // ── Serve reference images from media endpoint ──
+  // The server already serves /media/cineflow/* from projects/,
+  // we need to also serve input/ files. Let's map refs to the
+  // reference-images endpoint via an alternative path.
+  // Actually the server serves from CINEFLOW_ROOT/projects/{rel}
+  // Input files need a different path — we'll use /api/cineflow/input-preview
+  // But simpler: let's just use object URLs stored during upload for display.
+  // For existing files (from server), we need a media route.
+  // We'll fix refs display to use server-side listing endpoint.
+
+  // Actually for ref thumbnails, we need to serve those files.
+  // The /media/cineflow/ route maps to CINEFLOW_ROOT/projects/{rel}
+  // Input images are at CINEFLOW_ROOT/input/reference-images/
+  // We need to add an inline base64 preview OR a server route.
+  // For simplicity, let's store preview URLs in a map.
+  const refPreviewURLs = {};
+
+  function renderRefGridWithPreviews() {
+    const grid = document.getElementById('refGrid');
+    const count = document.getElementById('refCount');
+    count.textContent = `${selectedRefs.length} / 6`;
+    grid.innerHTML = selectedRefs.map(name => {
+      const src = refPreviewURLs[name] || '';
+      return `
+        <div class="ref-thumb">
+          ${src ? `<img src="${src}" alt="${name}" title="${name}" />` : `<div style="width:56px;height:56px;background:var(--border2);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:18px;">🖼️</div>`}
+          <button class="remove-btn" data-name="${name}" title="Remove">✕</button>
+        </div>
+      `;
+    }).join('');
+    grid.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        selectedRefs = selectedRefs.filter(r => r !== name);
+        delete refPreviewURLs[name];
+        await fetch(`${BASE}/api/cineflow/input-file`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'ref', filename: name }),
+        }).catch(() => {});
+        renderRefGridWithPreviews();
+      });
+    });
+    refDropZone.style.display = selectedRefs.length >= 6 ? 'none' : '';
+    validateForm();
+  }
+
+  // Patch handleRefFiles to capture preview URLs
+  async function handleRefFilesWithPreview(files) {
+    for (const file of files) {
+      if (selectedRefs.length >= 6) break;
+      if (selectedRefs.includes(file.name)) continue;
+      // Capture preview URL
+      const url = URL.createObjectURL(file);
+      refPreviewURLs[file.name] = url;
+      await uploadInputFile('ref', file);
+    }
+  }
+
+  // Re-wire event handlers to use preview version
+  refDropZone.addEventListener('dragover', e => { e.preventDefault(); refDropZone.classList.add('drag-over'); }, true);
+  refDropZone.addEventListener('dragleave', () => refDropZone.classList.remove('drag-over'), true);
+  refDropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    refDropZone.classList.remove('drag-over');
+    await handleRefFilesWithPreview(e.dataTransfer.files);
+  }, true);
+
+  refFileInput.addEventListener('change', async () => {
+    await handleRefFilesWithPreview(refFileInput.files);
+    refFileInput.value = '';
+  }, true);
+
+  // Override renderRefGrid to use preview version
+  function renderRefGrid() { renderRefGridWithPreviews(); }
+
+  // Patch uploadInputFile to call renderRefGridWithPreviews
+  // (already handled since renderRefGrid is overridden)
+
+  // ── Load existing input files on startup ──
+  async function loadInputFiles() {
+    try {
+      const r = await fetch(`${BASE}/api/cineflow/input-files`);
+      const data = await r.json();
+
+      // Load existing refs (without preview URLs — show placeholder)
+      for (const name of (data.refs || [])) {
+        if (!selectedRefs.includes(name)) {
+          selectedRefs.push(name);
+          // Try to load preview from media endpoint
+          refPreviewURLs[name] = `/media/cineflow-input/reference-images/${encodeURIComponent(name)}`;
+        }
+      }
+      renderRefGridWithPreviews();
+
+      // Render audio list
+      renderAudioList(data.audio || []);
+    } catch {}
+  }
+
+  // ── Validate and enable run button ──
+  function validateForm() {
+    const slug = toSlug(slugInput.value || '');
+    const desc = document.getElementById('descInput').value.trim();
+    const btn = document.getElementById('runBtn');
+    btn.disabled = !slug || !desc;
+  }
+
+  // ── Run pipeline ──
+  document.getElementById('runBtn').addEventListener('click', async () => {
+    const slug = toSlug(slugInput.value || '');
+    const description = document.getElementById('descInput').value.trim();
+    const scenes = parseInt(scenesInput.value) || 10;
+    if (!slug || !description) return;
+
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('progressPanel').classList.add('visible');
+
+    // Reset step states
+    ['stepAnalyze','stepGenerate','stepImages','stepDone'].forEach(id => {
+      document.getElementById(id).className = 'progress-step';
+    });
+    document.getElementById('progressLog').textContent = '';
+    document.getElementById('imagesLabel').textContent = 'Generating images...';
+    document.getElementById('doneLabel').textContent = 'Done!';
+
+    try {
+      const resp = await fetch(`${BASE}/api/cineflow/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          description,
+          scenes,
+          lang: selectedLang,
+          refs: selectedRefs,
+          audioFile: selectedAudio,
+        }),
+      });
+      const json = await resp.json();
+      if (!json.ok) {
+        alert('Pipeline error: ' + (json.error || 'unknown'));
+        document.getElementById('runBtn').disabled = false;
+        return;
+      }
+      startPolling();
+    } catch (e) {
+      alert('Failed to start pipeline: ' + e.message);
+      document.getElementById('runBtn').disabled = false;
+    }
+  });
+
+  // ── Projects sidebar ──
+  async function loadProjects() {
+    try {
+      const r = await fetch(`${BASE}/api/cineflow/projects`);
+      projects = await r.json();
+      if (!Array.isArray(projects)) projects = [];
+      renderSidebar();
+    } catch(e) {
+      document.getElementById('projectList').innerHTML = `<div class="sidebar-empty">Could not load projects.<br><small>${e.message}</small></div>`;
+    }
+  }
+
+  function renderSidebar() {
+    const list = document.getElementById('projectList');
+    if (projects.length === 0) {
+      list.innerHTML = `<div class="sidebar-empty">No projects yet.<br>Run the pipeline to create one.</div>`;
+      return;
+    }
+    list.innerHTML = projects.map(p => {
+      const isActive = p.slug === activeSlug;
+      const thumb = p.thumbnail
+        ? `<img class="project-thumb" src="${p.thumbnail}" alt="" loading="lazy" />`
+        : `<div class="project-thumb-placeholder">🎬</div>`;
+      const badges = [
+        p.imageCount > 0 ? `<span class="badge badge-img">📷 ${p.imageCount}</span>` : '',
+        p.videoCount > 0 ? `<span class="badge badge-vid">🎥 ${p.videoCount}</span>` : '',
+        p.finalVideo ? `<span class="badge badge-done">✓ Final</span>` : '',
+      ].filter(Boolean).join('');
+      return `
+        <div class="project-item ${isActive ? 'active' : ''}" data-slug="${p.slug}">
+          ${thumb}
+          <div class="project-info">
+            <div class="project-name">${p.title || p.slug}</div>
+            <div class="project-badges">${badges}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.project-item').forEach(el => {
+      el.addEventListener('click', () => selectProject(el.dataset.slug));
+    });
+  }
+
+  async function loadAndRenderProject(slug) {
+    activeSlug = slug;
+    renderSidebar();
+    document.getElementById('welcomeScreen').style.display = 'none';
+    const detail = document.getElementById('projectDetail');
+    detail.style.display = 'block';
+    detail.innerHTML = `<div class="loader"><div class="spinner"></div> Loading project…</div>`;
+
+    try {
+      const r = await fetch(`${BASE}/api/cineflow/project/${slug}`);
+      currentProject = await r.json();
+      durations = currentProject.durations ? { ...currentProject.durations } : {};
+      renderProject(currentProject);
+    } catch(e) {
+      detail.innerHTML = `<div class="loader">Failed to load: ${e.message}</div>`;
+    }
+  }
+
+  async function selectProject(slug) {
+    if (activeSlug === slug) return;
+    await loadAndRenderProject(slug);
+  }
+
+  function renderProject(p) {
+    const proj = projects.find(x => x.slug === p.slug) || {};
+    const title = p.production?.title || proj.title || p.slug;
+    const desc = p.production?.description || proj.description || '';
+    const detail = document.getElementById('projectDetail');
+
+    const statsArr = [];
+    if (p.images?.length) statsArr.push(`${p.images.length} images`);
+    if (p.videos?.length) statsArr.push(`${p.videos.length} scene videos`);
+    if (p.outputs?.length) statsArr.push(`${p.outputs.length} final video${p.outputs.length > 1 ? 's' : ''}`);
+
+    let videoHTML = '';
+    if (p.outputs && p.outputs.length > 0) {
+      videoHTML = `
+        <div class="video-section">
+          <div class="section-label">Final Video</div>
+          <video class="video-player" controls preload="metadata" src="${p.outputs[0]}"></video>
+        </div>`;
+    }
+
+    let durHTML = '';
+    if (p.images && p.images.length > 0) {
+      const bulkBtns = [3,4,5,6,7,8,9,10,11,12,13,14,15].map(s =>
+        `<button class="bulk-btn" data-sec="${s}">${s}s</button>`
+      ).join('');
+      durHTML = `
+        <div class="duration-section">
+          <div class="duration-header">
+            <div class="duration-title">Clip Duration</div>
+          </div>
+          <div class="bulk-row">
+            <span class="bulk-label">Set all:</span>
+            <div class="bulk-btns">${bulkBtns}</div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="save-btn" id="saveDurBtn">Save Durations</button>
+            <span class="save-feedback" id="saveFeedback">Saved!</span>
+          </div>
+        </div>`;
+    }
+
+    let scenesHTML = '';
+    if (p.images && p.images.length > 0) {
+      const sceneCards = p.images.map((imgUrl, i) => {
+        const filename = imgUrl.split('/').pop();
+        const baseName = filename.replace(/\.(png|jpg|jpeg)$/i, '');
+        // Match video: scene-01 matches scene-01.mp4, also scene-023 etc.
+        const matchingVid = (p.videos || []).find(v => {
+          const vBase = v.split('/').pop().replace(/\.mp4$/i, '');
+          return vBase === baseName || vBase === baseName.replace(/^scene-0+/, 'scene-') || baseName.replace(/^scene-0+/, 'scene-') === vBase;
+        });
+        const dur = durations[filename] || durations[baseName] || 5;
+        const mediaHTML = matchingVid
+          ? `<video class="scene-img" src="${matchingVid}" preload="none" loop muted
+               onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"
+               data-img="${imgUrl}" style="cursor:zoom-in;"></video>
+             <span class="scene-num">#${i+1}</span>
+             <span class="scene-vid-badge" title="Click to preview image">🎬</span>`
+          : `<img class="scene-img" src="${imgUrl}" alt="Scene ${i+1}" loading="lazy"
+               style="cursor:zoom-in;" />
+             <span class="scene-num">#${i+1}</span>`;
+        return `
+          <div class="scene-card">
+            <div class="scene-img-wrap" data-img="${imgUrl}" data-vid="${matchingVid||''}">
+              ${mediaHTML}
+            </div>
+            <div class="scene-footer">
+              <span class="scene-label">${filename}</span>
+              <select class="dur-select" data-key="${filename}" data-base="${baseName}">
+                ${[3,4,5,6,7,8,9,10,11,12,13,14,15].map(s =>
+                  `<option value="${s}" ${dur == s ? 'selected' : ''}>${s}s</option>`
+                ).join('')}
+              </select>
+            </div>
+          </div>`;
+      }).join('');
+      scenesHTML = `
+        <div class="scenes-section">
+          <div class="section-label">Scenes (${p.images.length})</div>
+          <div class="scenes-grid" id="scenesGrid">${sceneCards}</div>
+        </div>`;
+    }
+
+    detail.innerHTML = `
+      <div class="project-header">
+        <div>
+          <div class="project-title">${title}</div>
+          ${desc ? `<div class="project-desc">${desc}</div>` : ''}
+          <div class="stats-row">
+            ${statsArr.map(s => `<span class="stat-chip"><span class="dot"></span>${s}</span>`).join('')}
+          </div>
+          <div class="action-row">
+            <button class="action-btn" id="openFolderBtn">📁 Open Folder</button>
+            <button class="action-btn" id="genVideosBtn">🎬 Generate Videos</button>
+            <button class="action-btn" id="redownloadBtn">⬇️ Re-download Clips</button>
+            <button class="action-btn" id="mergeBtn">🎞️ Merge with FFmpeg</button>
+          </div>
+          <div id="actionStatus" style="display:none;margin-top:10px;padding:10px 12px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:6px;font-size:12px;font-family:monospace;color:#50e3c2;max-height:120px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      ${videoHTML}
+      ${durHTML}
+      ${scenesHTML}
+    `;
+
+    // Open Folder button
+    detail.querySelector('#openFolderBtn').addEventListener('click', () => {
+      fetch(`${BASE}/api/cineflow/open-folder`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ slug: p.slug }) });
+    });
+
+    function showStatus(msg, color) {
+      const el = detail.querySelector('#actionStatus');
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.color = color || '#50e3c2';
+      el.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${msg}</div>`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // Generate Videos button
+    const genBtn = detail.querySelector('#genVideosBtn');
+    if (genBtn) {
+      genBtn.addEventListener('click', async () => {
+        const sceneCount = p.images?.length || 0;
+        const confirmed = confirm(`Generate ${sceneCount} videos for "${p.slug}" using WaveSpeed/Kling 3.0?\n\nThis will make ${sceneCount} API calls and incur costs. Continue?`);
+        if (!confirmed) return;
+        genBtn.disabled = true;
+        genBtn.textContent = '⏳ Submitting...';
+        showStatus(`Submitting ${sceneCount} scenes for "${p.slug}" to WaveSpeed/Kling 3.0...`);
+        try {
+          const r = await fetch(`${BASE}/api/cineflow/generate-videos`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ slug: p.slug })
+          });
+          const json = await r.json();
+          if (json.ok) {
+            showStatus('✓ All scenes submitted — polling for results...');
+            genBtn.textContent = '⏳ Generating...';
+          } else {
+            showStatus('✗ Error: ' + JSON.stringify(json), '#ff6b6b');
+            genBtn.disabled = false; genBtn.textContent = '🎬 Generate Videos';
+          }
+        } catch(e) {
+          showStatus('✗ Request failed: ' + e.message, '#ff6b6b');
+          genBtn.disabled = false; genBtn.textContent = '🎬 Generate Videos';
+        }
+      });
+    }
+
+    // Re-download Clips button
+    const redownloadBtn = detail.querySelector('#redownloadBtn');
+    if (redownloadBtn) {
+      redownloadBtn.addEventListener('click', async () => {
+        redownloadBtn.disabled = true;
+        redownloadBtn.textContent = '⏳ Downloading...';
+        showStatus(`Fetching completed clips from WaveSpeed for "${p.slug}"...`);
+        try {
+          const r = await fetch(`${BASE}/api/cineflow/redownload-videos`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ slug: p.slug })
+          });
+          const json = await r.json();
+          if (json.ok) showStatus('✓ Re-download started — check status log for progress...');
+          else { showStatus('✗ Error: ' + JSON.stringify(json), '#ff6b6b'); redownloadBtn.disabled = false; redownloadBtn.textContent = '⬇️ Re-download Clips'; }
+        } catch(e) {
+          showStatus('✗ Request failed: ' + e.message, '#ff6b6b');
+          redownloadBtn.disabled = false; redownloadBtn.textContent = '⬇️ Re-download Clips';
+        }
+      });
+    }
+
+    // Merge button
+    const mergeBtn2 = detail.querySelector('#mergeBtn');
+    if (mergeBtn2) {
+      mergeBtn2.addEventListener('click', async () => {
+        const confirmed = confirm(`Merge all clips for "${p.slug}" with FFmpeg?\n\nThis will combine all scene videos into one final video.`);
+        if (!confirmed) return;
+        mergeBtn2.disabled = true;
+        mergeBtn2.textContent = '⏳ Merging...';
+        showStatus(`Starting FFmpeg merge for "${p.slug}"...`);
+        try {
+          const r = await fetch(`${BASE}/api/cineflow/merge-ffmpeg`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ slug: p.slug })
+          });
+          const json = await r.json();
+          if (json.ok) showStatus('✓ FFmpeg started — combining clips...');
+          else { showStatus('✗ Error: ' + JSON.stringify(json), '#ff6b6b'); mergeBtn2.disabled = false; mergeBtn2.textContent = '🎞️ Merge with FFmpeg'; }
+        } catch(e) {
+          showStatus('✗ Request failed: ' + e.message, '#ff6b6b');
+          mergeBtn2.disabled = false; mergeBtn2.textContent = '🎞️ Merge with FFmpeg';
+        }
+      });
+    }
+
+    // Lightbox on scene images/videos
+    detail.querySelectorAll('.scene-img').forEach((el, i) => {
+      el.style.cursor = 'zoom-in';
+      el.addEventListener('click', () => {
+        const lb = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lightboxImg');
+        const lbVid = document.getElementById('lightboxVideo');
+        const cap = document.getElementById('lightboxCaption');
+        if (el.tagName === 'VIDEO') {
+          lbVid.src = el.src;
+          lbVid.style.display = 'block';
+          lbImg.style.display = 'none';
+          cap.textContent = `Scene ${i+1} — video`;
+        } else {
+          lbImg.src = el.src;
+          lbImg.style.display = 'block';
+          lbVid.pause(); lbVid.src = ''; lbVid.style.display = 'none';
+          cap.textContent = el.alt || `Scene ${i+1}`;
+        }
+        lb.style.display = 'flex';
+      });
+    });
+
+    // Auto-detect aspect ratio from first loaded image
+    const firstSceneImg = detail.querySelector('.scene-img-wrap img, .scene-img-wrap video');
+    const scenesGrid = detail.querySelector('#scenesGrid');
+    if (firstSceneImg && scenesGrid) {
+      const applyAr = (w, h) => {
+        if (!w || !h) return;
+        const ratio = w / h;
+        const arCss = ratio < 0.75 ? '9/16' : ratio < 1.2 ? '1/1' : '16/9';
+        scenesGrid.style.setProperty('--scene-ar', arCss);
+        if (ratio < 0.75) scenesGrid.style.gridTemplateColumns = 'repeat(5, 1fr)';
+      };
+      if (firstSceneImg.tagName === 'VIDEO') {
+        firstSceneImg.addEventListener('loadedmetadata', () => applyAr(firstSceneImg.videoWidth, firstSceneImg.videoHeight), { once: true });
+      } else {
+        if (firstSceneImg.naturalWidth) applyAr(firstSceneImg.naturalWidth, firstSceneImg.naturalHeight);
+        else firstSceneImg.addEventListener('load', () => applyAr(firstSceneImg.naturalWidth, firstSceneImg.naturalHeight), { once: true });
+      }
+    }
+
+    detail.querySelectorAll('.dur-select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const key = sel.dataset.key;
+        const base = sel.dataset.base;
+        const val = parseInt(sel.value, 10);
+        durations[key] = val;
+        durations[base] = val;
+      });
+    });
+
+    detail.querySelectorAll('.bulk-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sec = parseInt(btn.dataset.sec, 10);
+        detail.querySelectorAll('.dur-select').forEach(sel => {
+          sel.value = String(sec);
+          durations[sel.dataset.key] = sec;
+          durations[sel.dataset.base] = sec;
+        });
+      });
+    });
+
+    const saveBtn = detail.querySelector('#saveDurBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        try {
+          await fetch(`${BASE}/api/cineflow/project/${p.slug}/durations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(durations)
+          });
+          const fb = detail.querySelector('#saveFeedback');
+          if (fb) { fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); }
+        } catch(e) { alert('Save failed: ' + e.message); }
+        saveBtn.disabled = false;
+      });
+    }
+  }
+
+  // ── Startup ──
+  loadProjects();
+  loadInputFiles();
+
+  // Check if pipeline is already running on load
+  fetch(`${BASE}/api/cineflow/run/status`).then(r => r.json()).then(s => {
+    if (s && s.status === 'running') {
+      handlePipelineProgress(s);
+      startPolling();
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>
