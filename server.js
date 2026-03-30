@@ -158,7 +158,7 @@ Output ONLY the YAML block, nothing else.` });
   return text;
 }
 
-async function cineflowGenerate(slug, lang) {
+async function cineflowGenerate(slug, lang, aspectRatio = '16:9') {
   const { GEMINI_API_KEY } = readEnvFile();
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set in .env');
 
@@ -194,11 +194,12 @@ Output ONLY valid JSON, no markdown, no explanation.` }] }],
   text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
   const production = JSON.parse(text);
+  production.aspect_ratio = aspectRatio || '16:9';
   fs.writeFileSync(path.join(ROOT, 'projects', slug, 'production.json'), JSON.stringify(production, null, 2), 'utf8');
   return production;
 }
 
-async function cineflowImages(slug, refs) {
+async function cineflowImages(slug, refs, aspectRatio = '16:9') {
   const { GEMINI_API_KEY } = readEnvFile();
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set in .env');
 
@@ -227,7 +228,8 @@ async function cineflowImages(slug, refs) {
       broadcast({ type: 'pipeline:progress', ...pipelineState }); continue;
     }
 
-    const parts = [...refParts, { text: scene.image_prompt || scene.title || `Scene ${i + 1}` }];
+    const arHint = aspectRatio === '9:16' ? 'Portrait format 9:16, vertical composition. ' : 'Landscape format 16:9, cinematic widescreen. ';
+    const parts = [...refParts, { text: arHint + (scene.image_prompt || scene.title || `Scene ${i + 1}`) }];
     let success = false;
     for (let attempt = 0; attempt < 10 && !success; attempt++) {
       try {
@@ -255,7 +257,7 @@ async function cineflowImages(slug, refs) {
   }
 }
 
-async function runPipeline(slug, description, scenes, lang, refs, audioFile) {
+async function runPipeline(slug, description, scenes, lang, aspectRatio, refs, audioFile) {
   try {
     pipelineState.step = 'analyze'; pipelineState.progress = 10;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
@@ -263,12 +265,12 @@ async function runPipeline(slug, description, scenes, lang, refs, audioFile) {
 
     pipelineState.step = 'generate'; pipelineState.progress = 35;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
-    const prod = await cineflowGenerate(slug, lang);
+    const prod = await cineflowGenerate(slug, lang, aspectRatio);
 
     pipelineState.step = 'images'; pipelineState.progress = 50;
     pipelineState.total = prod.scenes?.length || 0;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
-    await cineflowImages(slug, refs);
+    await cineflowImages(slug, refs, aspectRatio);
 
     pipelineState.status = 'done'; pipelineState.progress = 100;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
@@ -460,11 +462,11 @@ const server = http.createServer(async (req, res) => {
   // ── API: run pipeline ──
   if (pathname === '/api/cineflow/run' && req.method === 'POST') {
     try {
-      const { slug, description, scenes, lang, refs, audioFile } = JSON.parse(await readBody(req));
+      const { slug, description, scenes, lang, aspectRatio, refs, audioFile } = JSON.parse(await readBody(req));
       if (!slug || !description) { sendJSON(res, { error: 'slug and description required' }, 400); return; }
       if (pipelineState?.status === 'running') { sendJSON(res, { error: 'Pipeline already running' }, 409); return; }
       pipelineState = { status: 'running', slug, step: 'analyze', progress: 0, current: 0, total: 0, logs: [], error: null, startedAt: Date.now() };
-      runPipeline(slug, description, scenes || 10, lang || 'EN', refs || [], audioFile || null).catch(() => {});
+      runPipeline(slug, description, scenes || 10, lang || 'EN', aspectRatio || '16:9', refs || [], audioFile || null).catch(() => {});
       sendJSON(res, { ok: true, slug });
     } catch (e) { sendJSON(res, { error: e.message }, 500); }
     return;
@@ -505,7 +507,7 @@ const server = http.createServer(async (req, res) => {
           try {
             const result = await apiRequest(
               'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video',
-              { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: '16:9' },
+              { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: prod.aspect_ratio || '16:9' },
               { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` }
             );
             const taskId = result?.data?.id;
@@ -566,6 +568,87 @@ const server = http.createServer(async (req, res) => {
         }
         broadcast({ type: 'pipeline:progress', step: 'redownload', action: 'complete', downloaded, skipped, failed });
       } catch (e) { broadcast({ type: 'pipeline:progress', step: 'redownload', action: 'error', error: e.message }); }
+    })();
+    sendJSON(res, { ok: true }); return;
+  }
+
+  // ── API: regen single image ──
+  if (pathname === '/api/cineflow/regen-image' && req.method === 'POST') {
+    const { slug, sceneId } = JSON.parse(await readBody(req));
+    const safeSlug = (slug || '').replace(/\.\./g, '');
+    const sid = parseInt(sceneId, 10);
+    (async () => {
+      try {
+        const { GEMINI_API_KEY } = readEnvFile();
+        const scenesDir = path.join(ROOT, 'projects', safeSlug, 'scenes');
+        const prodPath = path.join(ROOT, 'projects', safeSlug, 'production.json');
+        const prod = JSON.parse(fs.readFileSync(prodPath, 'utf8'));
+        const scene = prod.scenes.find(s => s.id === sid);
+        if (!scene) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'img_error', sceneId: sid, error: 'Scene not found' }); return; }
+        const aspectRatio = prod.aspect_ratio || '16:9';
+        const arHint = aspectRatio === '9:16' ? 'Portrait format 9:16, vertical composition. ' : 'Landscape format 16:9, cinematic widescreen. ';
+        const num = String(sid).padStart(2, '0');
+        const outPath = path.join(scenesDir, `scene-${num}.png`);
+        if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+        const refsDir = path.join(ROOT, 'input', 'reference-images');
+        const refFiles = fs.existsSync(refsDir) ? fs.readdirSync(refsDir).filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f)) : [];
+        const refParts = refFiles.map(ref => { const ext = path.extname(ref).toLowerCase(); return { inlineData: { mimeType: (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg' : 'image/png', data: fs.readFileSync(path.join(refsDir, ref)).toString('base64') } }; });
+        const prompt = arHint + (scene.image_prompt || scene.title || `Scene ${sid}`);
+        const parts = [...refParts, { text: prompt }];
+        let success = false;
+        for (let attempt = 0; attempt < 10 && !success; attempt++) {
+          try {
+            const resp = await apiRequest(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`, { contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } });
+            const imgPart = resp?.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+            if (imgPart?.inlineData?.data) { fs.writeFileSync(outPath, Buffer.from(imgPart.inlineData.data, 'base64')); success = true; }
+            else { const r = resp?.candidates?.[0]?.finishReason; if (r === 'SAFETY' || r === 'RECITATION') parts[parts.length - 1] = { text: `${prompt} Safe, cinematic, epic fantasy art style, no violence.` }; await new Promise(r => setTimeout(r, 2000)); }
+          } catch { await new Promise(r => setTimeout(r, 3000)); }
+        }
+        if (success) broadcast({ type: 'pipeline:progress', step: 'regen', action: 'img_done', sceneId: sid });
+        else broadcast({ type: 'pipeline:progress', step: 'regen', action: 'img_error', sceneId: sid, error: 'Failed after 10 attempts' });
+      } catch(e) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'img_error', sceneId: sid, error: e.message }); }
+    })();
+    sendJSON(res, { ok: true }); return;
+  }
+
+  // ── API: regen single video ──
+  if (pathname === '/api/cineflow/regen-video' && req.method === 'POST') {
+    const { slug, sceneId } = JSON.parse(await readBody(req));
+    const safeSlug = (slug || '').replace(/\.\./g, '');
+    const sid = parseInt(sceneId, 10);
+    (async () => {
+      try {
+        const { WAVESPEED_API_KEY } = readEnvFile();
+        const scenesDir = path.join(ROOT, 'projects', safeSlug, 'scenes');
+        const prodPath = path.join(ROOT, 'projects', safeSlug, 'production.json');
+        const durPath = path.join(ROOT, 'projects', safeSlug, 'scene-durations.json');
+        const prod = JSON.parse(fs.readFileSync(prodPath, 'utf8'));
+        const scene = prod.scenes.find(s => s.id === sid);
+        if (!scene) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: 'Scene not found' }); return; }
+        const aspectRatio = prod.aspect_ratio || '16:9';
+        let durations = {};
+        if (fs.existsSync(durPath)) durations = JSON.parse(fs.readFileSync(durPath, 'utf8'));
+        const num = String(sid).padStart(2, '0');
+        const imgFile = path.join(scenesDir, `scene-${num}.png`);
+        if (!fs.existsSync(imgFile)) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: 'No image found — regenerate image first' }); return; }
+        const outFile = path.join(scenesDir, `scene-${num}.mp4`);
+        if (fs.existsSync(outFile)) fs.unlinkSync(outFile);
+        const dur = durations[`scene-${num}.png`] || 5;
+        const result = await apiRequest('https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video', { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: aspectRatio }, { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` });
+        const taskId = result?.data?.id;
+        if (!taskId) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: 'No task ID returned' }); return; }
+        broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_submitted', sceneId: sid, taskId });
+        let done = false;
+        for (let attempt = 0; attempt < 60 && !done; attempt++) {
+          await new Promise(r => setTimeout(r, 10000));
+          try {
+            const status = await apiRequest(`https://api.wavespeed.ai/api/v3/predictions/${taskId}/result`, null, { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` }, 'GET');
+            const url = status?.data?.outputs?.[0];
+            if (url) { await downloadFile(url, outFile); done = true; broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_done', sceneId: sid }); }
+          } catch {}
+        }
+        if (!done) broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: 'Timed out' });
+      } catch(e) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: e.message }); }
     })();
     sendJSON(res, { ok: true }); return;
   }

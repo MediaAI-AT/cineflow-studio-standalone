@@ -623,6 +623,36 @@
     text-transform: uppercase; letter-spacing: 0.05em;
   }
 
+  .scene-regen-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 4px; padding: 5px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    opacity: 0; transition: opacity 0.15s; pointer-events: none;
+  }
+  .scene-img-wrap:hover .scene-regen-bar { opacity: 1; pointer-events: all; }
+
+  .regen-btn {
+    flex: 1; padding: 4px 0; font-size: 10px; font-weight: 600;
+    border: none; border-radius: 4px; cursor: pointer;
+    background: rgba(255,255,255,0.15); color: #fff;
+    backdrop-filter: blur(4px); transition: background 0.12s;
+    white-space: nowrap;
+  }
+  .regen-btn:hover { background: rgba(245,166,35,0.7); color: #000; }
+  .regen-btn.loading { background: rgba(245,166,35,0.4); color: #fff; cursor: wait; pointer-events: none; }
+
+  .regen-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #fff; text-align: center; line-height: 1.5;
+    animation: regen-pulse 1.5s ease-in-out infinite;
+    pointer-events: none; z-index: 5;
+  }
+  @keyframes regen-pulse {
+    0%, 100% { opacity: 0.6; } 50% { opacity: 1; }
+  }
+
   .scene-footer {
     padding: 7px 8px;
     display: flex; align-items: center;
@@ -724,6 +754,15 @@
         </div>
       </div>
 
+      <!-- Aspect Ratio -->
+      <div class="input-section">
+        <div class="input-label">Aspect Ratio</div>
+        <div class="lang-row">
+          <button class="lang-btn ar-btn active" data-ar="16:9" id="ar169">⬛ 16:9</button>
+          <button class="lang-btn ar-btn" data-ar="9:16" id="ar916">▯ 9:16</button>
+        </div>
+      </div>
+
       <!-- Reference Photos -->
       <div class="input-section">
         <div class="input-label">
@@ -802,7 +841,10 @@
   let activeSlug = null;
   let currentProject = null;
   let durations = {};
+  let regenInProgress = new Map(); // sceneId → 'img'|'vid'
+  let regenRefreshInterval = null;
   let selectedLang = 'EN';
+  let selectedAspectRatio = '16:9';
   let selectedRefs = [];     // filenames of selected ref images
   let selectedAudio = null;  // filename of selected audio
   let audioDurations = {};   // filename -> duration in seconds
@@ -831,6 +873,31 @@
                 if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
               }
               if (msg.action === 'error') { log('✗ Video error: ' + msg.error, '#ff6b6b'); if(genBtn) { genBtn.textContent = '❌ Error'; genBtn.disabled = false; } }
+            }
+            if (msg.step === 'regen') {
+              const card = document.querySelector(`.scene-card[data-scene-id="${msg.sceneId}"]`);
+              const imgBtn = card?.querySelector('.regen-btn[data-action="img"]');
+              const vidBtn = card?.querySelector('.regen-btn[data-action="vid"]');
+              if (msg.action === 'img_done') {
+                log(`✓ Scene ${msg.sceneId} image regenerated`, '#50e3c2');
+                stopRegenTracking(msg.sceneId);
+                if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+              }
+              if (msg.action === 'img_error') {
+                log(`✗ Scene ${msg.sceneId} image error: ${msg.error}`, '#ff6b6b');
+                stopRegenTracking(msg.sceneId);
+                if (imgBtn) { imgBtn.classList.remove('loading'); imgBtn.textContent = '🔄 Image'; }
+              }
+              if (msg.action === 'vid_done') {
+                log(`✓ Scene ${msg.sceneId} video ready`, '#50e3c2');
+                stopRegenTracking(msg.sceneId);
+                if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+              }
+              if (msg.action === 'vid_error') {
+                log(`✗ Scene ${msg.sceneId} video error: ${msg.error}`, '#ff6b6b');
+                stopRegenTracking(msg.sceneId);
+                if (vidBtn) { vidBtn.classList.remove('loading'); vidBtn.textContent = '🎬 Video'; }
+              }
             }
             if (msg.step === 'redownload') {
               const rdBtn = document.querySelector('#redownloadBtn');
@@ -964,11 +1031,20 @@
   document.getElementById('descInput').addEventListener('input', validateForm);
 
   // ── Language buttons ──
-  document.querySelectorAll('.lang-btn').forEach(btn => {
+  document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.lang-btn[data-lang]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedLang = btn.dataset.lang;
+    });
+  });
+
+  // ── Aspect Ratio buttons ──
+  document.querySelectorAll('.ar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ar-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedAspectRatio = btn.dataset.ar;
     });
   });
 
@@ -1336,6 +1412,7 @@
           description,
           scenes,
           lang: selectedLang,
+          aspectRatio: selectedAspectRatio,
           refs: selectedRefs,
           audioFile: selectedAudio,
         }),
@@ -1393,6 +1470,43 @@
 
     list.querySelectorAll('.project-item').forEach(el => {
       el.addEventListener('click', () => selectProject(el.dataset.slug));
+    });
+  }
+
+  function startRegenTracking(sceneId, action) {
+    regenInProgress.set(sceneId, action);
+    if (!regenRefreshInterval) {
+      regenRefreshInterval = setInterval(() => {
+        if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+      }, 10000);
+    }
+  }
+
+  function stopRegenTracking(sceneId) {
+    regenInProgress.delete(sceneId);
+    if (regenInProgress.size === 0 && regenRefreshInterval) {
+      clearInterval(regenRefreshInterval);
+      regenRefreshInterval = null;
+    }
+  }
+
+  function restoreRegenStates() {
+    regenInProgress.forEach((action, sceneId) => {
+      const card = document.querySelector(`.scene-card[data-scene-id="${sceneId}"]`);
+      if (!card) return;
+      const btn = card.querySelector(`.regen-btn[data-action="${action}"]`);
+      if (btn) {
+        btn.classList.add('loading');
+        btn.textContent = action === 'img' ? '⏳ Image...' : '⏳ Video...';
+      }
+      // Show pulsing overlay on the image wrap
+      const wrap = card.querySelector('.scene-img-wrap');
+      if (wrap && !wrap.querySelector('.regen-overlay')) {
+        const ov = document.createElement('div');
+        ov.className = 'regen-overlay';
+        ov.innerHTML = action === 'img' ? '🔄<br>Generating...' : '🎬<br>Rendering...';
+        wrap.appendChild(ov);
+      }
     });
   }
 
@@ -1480,10 +1594,15 @@
           : `<img class="scene-img" src="${imgUrl}" alt="Scene ${i+1}" loading="lazy"
                style="cursor:zoom-in;" />
              <span class="scene-num">#${i+1}</span>`;
+        const sceneId = i + 1;
         return `
-          <div class="scene-card">
+          <div class="scene-card" data-scene-id="${sceneId}">
             <div class="scene-img-wrap" data-img="${imgUrl}" data-vid="${matchingVid||''}">
               ${mediaHTML}
+              <div class="scene-regen-bar">
+                <button class="regen-btn" data-action="img" data-scene-id="${sceneId}">🔄 Image</button>
+                <button class="regen-btn" data-action="vid" data-scene-id="${sceneId}">🎬 Video</button>
+              </div>
             </div>
             <div class="scene-footer">
               <span class="scene-label">${filename}</span>
@@ -1512,6 +1631,7 @@
           </div>
           <div class="action-row">
             <button class="action-btn" id="openFolderBtn">📁 Open Folder</button>
+            <button class="action-btn" id="refreshBtn">🔄 Refresh</button>
             <button class="action-btn" id="genVideosBtn">🎬 Generate Videos</button>
             <button class="action-btn" id="redownloadBtn">⬇️ Re-download Clips</button>
             <button class="action-btn" id="mergeBtn">🎞️ Merge with FFmpeg</button>
@@ -1523,6 +1643,11 @@
       ${durHTML}
       ${scenesHTML}
     `;
+
+    // Refresh button
+    detail.querySelector('#refreshBtn').addEventListener('click', () => {
+      if (currentProject?.slug) loadAndRenderProject(currentProject.slug);
+    });
 
     // Open Folder button
     detail.querySelector('#openFolderBtn').addEventListener('click', () => {
@@ -1614,6 +1739,9 @@
       });
     }
 
+    // Restore any active regen states (loading overlays)
+    restoreRegenStates();
+
     // Lightbox on scene images/videos
     detail.querySelectorAll('.scene-img').forEach((el, i) => {
       el.style.cursor = 'zoom-in';
@@ -1634,6 +1762,38 @@
           cap.textContent = el.alt || `Scene ${i+1}`;
         }
         lb.style.display = 'flex';
+      });
+    });
+
+    // ── Regen buttons ──
+    detail.querySelectorAll('.regen-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const sceneId = parseInt(btn.dataset.sceneId, 10);
+        const action = btn.dataset.action; // 'img' or 'vid'
+        btn.classList.add('loading');
+        btn.textContent = action === 'img' ? '⏳ Image...' : '⏳ Video...';
+        showStatus(`Regenerating scene ${sceneId} ${action === 'img' ? 'image' : 'video'}...`);
+        try {
+          const endpoint = action === 'img' ? '/api/cineflow/regen-image' : '/api/cineflow/regen-video';
+          const r = await fetch(`${BASE}${endpoint}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: p.slug, sceneId })
+          });
+          const json = await r.json();
+          if (json.ok) {
+            startRegenTracking(sceneId, action);
+            showStatus(`✓ Scene ${sceneId} ${action === 'img' ? 'image regenerating — auto-refreshing every 10s...' : 'video submitted — polling, auto-refreshing every 10s...'}`);
+          } else {
+            showStatus(`✗ Error: ${json.error || JSON.stringify(json)}`, '#ff6b6b');
+            btn.classList.remove('loading');
+            btn.textContent = action === 'img' ? '🔄 Image' : '🎬 Video';
+          }
+        } catch(e) {
+          showStatus(`✗ Request failed: ${e.message}`, '#ff6b6b');
+          btn.classList.remove('loading');
+          btn.textContent = action === 'img' ? '🔄 Image' : '🎬 Video';
+        }
       });
     });
 
