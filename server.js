@@ -389,6 +389,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── API: save video prompt ──
+  if (pathname === '/api/cineflow/save-prompt' && req.method === 'POST') {
+    const body = JSON.parse(await readBody(req));
+    const slug = (body.slug || '').replace(/\.\./g, '');
+    const sceneId = parseInt(body.sceneId, 10);
+    const videoPrompt = String(body.videoPrompt || '');
+    const prodPath = path.join(ROOT, 'projects', slug, 'production.json');
+    if (!fs.existsSync(prodPath)) { sendJSON(res, { error: 'Project not found' }, 404); return; }
+    try {
+      const prod = JSON.parse(fs.readFileSync(prodPath, 'utf8'));
+      const scene = prod.scenes?.find(s => s.id === sceneId);
+      if (!scene) { sendJSON(res, { error: 'Scene not found' }, 404); return; }
+      scene.video_prompt = videoPrompt;
+      fs.writeFileSync(prodPath, JSON.stringify(prod, null, 2));
+      sendJSON(res, { ok: true });
+    } catch(e) { sendJSON(res, { error: e.message }, 500); }
+    return;
+  }
+
   // ── API: project detail ──
   if (pathname.startsWith('/api/cineflow/project/') && !pathname.endsWith('/durations') && req.method === 'GET') {
     const slug = pathname.replace('/api/cineflow/project/', '').split('/')[0];
