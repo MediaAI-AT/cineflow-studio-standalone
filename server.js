@@ -366,7 +366,10 @@ const server = http.createServer(async (req, res) => {
     try {
       const projDir = path.join(ROOT, 'projects');
       if (!fs.existsSync(projDir)) { sendJSON(res, []); return; }
-      const slugs = fs.readdirSync(projDir).filter(d => fs.statSync(path.join(projDir, d)).isDirectory());
+      const slugs = fs.readdirSync(projDir).filter(d => {
+        const full = path.join(projDir, d);
+        return fs.statSync(full).isDirectory() && !fs.existsSync(path.join(full, '.hidden'));
+      });
       const projects = slugs.map(slug => {
         const scenesDir = path.join(projDir, slug, 'scenes');
         const outputDir = path.join(projDir, slug, 'output');
@@ -405,6 +408,16 @@ const server = http.createServer(async (req, res) => {
       const outputs = fs.existsSync(outputDir) ? fs.readdirSync(outputDir).filter(f => /\.mp4$/i.test(f)).sort() : [];
       sendJSON(res, { slug, production, durations, images: images.map(f => `/media/cineflow/${slug}/scenes/${f}`), videos: videos.map(f => `/media/cineflow/${slug}/scenes/${f}`), outputs: outputs.map(f => `/media/cineflow/${slug}/output/${f}`) });
     } catch (e) { sendJSON(res, { error: e.message }, 500); }
+    return;
+  }
+
+  // ── API: hide project ──
+  if (pathname.startsWith('/api/cineflow/project/') && pathname.endsWith('/hide') && req.method === 'POST') {
+    const slug = pathname.replace('/api/cineflow/project/', '').replace('/hide', '').replace(/\.\./g, '');
+    const projDir = path.join(ROOT, 'projects', slug);
+    if (!fs.existsSync(projDir)) { sendJSON(res, { error: 'Project not found' }, 404); return; }
+    fs.writeFileSync(path.join(projDir, '.hidden'), new Date().toISOString());
+    sendJSON(res, { ok: true });
     return;
   }
 
@@ -488,8 +501,11 @@ const server = http.createServer(async (req, res) => {
 
   // ── API: generate videos (WaveSpeed) ──
   if (pathname === '/api/cineflow/generate-videos' && req.method === 'POST') {
-    const { slug } = JSON.parse(await readBody(req));
-    const safeSlug = (slug || '').replace(/\.\./g, '');
+    const body = JSON.parse(await readBody(req));
+    const safeSlug = (body.slug || '').replace(/\.\./g, '');
+    const videoModel = body.videoModel === 'pixverse' ? 'pixverse' : 'kling';
+    const generateAudio = !!body.generateAudio;
+    const resolution = ['720p','1080p'].includes(body.resolution) ? body.resolution : '720p';
     (async () => {
       try {
         const { WAVESPEED_API_KEY } = readEnvFile();
@@ -505,11 +521,15 @@ const server = http.createServer(async (req, res) => {
           if (!fs.existsSync(imgFile)) continue;
           const dur = durations[`scene-${String(scene.id).padStart(2, '0')}.png`] || 5;
           try {
-            const result = await apiRequest(
-              'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video',
-              { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: prod.aspect_ratio || '16:9' },
-              { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` }
-            );
+            let apiUrl, apiBody;
+            if (videoModel === 'pixverse') {
+              apiUrl = 'https://api.wavespeed.ai/api/v3/pixverse/pixverse-v6/image-to-video';
+              apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: Math.min(dur, 15), resolution, generate_audio_switch: generateAudio };
+            } else {
+              apiUrl = 'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video';
+              apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: prod.aspect_ratio || '16:9' };
+            }
+            const result = await apiRequest(apiUrl, apiBody, { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` });
             const taskId = result?.data?.id;
             if (taskId) { tasks.push({ taskId, sceneId: scene.id }); broadcast({ type: 'pipeline:progress', step: 'videos', action: 'submitted', sceneId: scene.id, taskId }); }
           } catch (e) { broadcast({ type: 'pipeline:progress', step: 'videos', action: 'submit_error', sceneId: scene.id, error: e.message }); }
@@ -613,9 +633,12 @@ const server = http.createServer(async (req, res) => {
 
   // ── API: regen single video ──
   if (pathname === '/api/cineflow/regen-video' && req.method === 'POST') {
-    const { slug, sceneId } = JSON.parse(await readBody(req));
-    const safeSlug = (slug || '').replace(/\.\./g, '');
-    const sid = parseInt(sceneId, 10);
+    const body = JSON.parse(await readBody(req));
+    const safeSlug = (body.slug || '').replace(/\.\./g, '');
+    const sid = parseInt(body.sceneId, 10);
+    const videoModel = body.videoModel === 'pixverse' ? 'pixverse' : 'kling';
+    const generateAudio = !!body.generateAudio;
+    const resolution = ['720p','1080p'].includes(body.resolution) ? body.resolution : '720p';
     (async () => {
       try {
         const { WAVESPEED_API_KEY } = readEnvFile();
@@ -634,7 +657,15 @@ const server = http.createServer(async (req, res) => {
         const outFile = path.join(scenesDir, `scene-${num}.mp4`);
         if (fs.existsSync(outFile)) fs.unlinkSync(outFile);
         const dur = durations[`scene-${num}.png`] || 5;
-        const result = await apiRequest('https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video', { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: aspectRatio }, { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` });
+        let apiUrl, apiBody;
+        if (videoModel === 'pixverse') {
+          apiUrl = 'https://api.wavespeed.ai/api/v3/pixverse/pixverse-v6/image-to-video';
+          apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: Math.min(dur, 15), resolution, generate_audio_switch: generateAudio };
+        } else {
+          apiUrl = 'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video';
+          apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: aspectRatio };
+        }
+        const result = await apiRequest(apiUrl, apiBody, { 'Authorization': `Bearer ${WAVESPEED_API_KEY}` });
         const taskId = result?.data?.id;
         if (!taskId) { broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_error', sceneId: sid, error: 'No task ID returned' }); return; }
         broadcast({ type: 'pipeline:progress', step: 'regen', action: 'vid_submitted', sceneId: sid, taskId });
