@@ -737,6 +737,8 @@
   .vs-btn:hover { border-color: rgba(245,166,35,0.4); color: var(--text); }
   .vs-btn.active { background: var(--accent-dim); border-color: rgba(245,166,35,0.5); color: var(--accent); font-weight: 600; }
   .vs-divider { width: 1px; height: 16px; background: var(--border2); }
+  .vs-cost-warning { display: none; width: 100%; padding: 7px 10px; background: rgba(245,166,35,0.08); border: 1px solid rgba(245,166,35,0.28); border-radius: 5px; font-size: 10px; color: #f5c842; line-height: 1.7; }
+  .vs-cost-warning.show { display: block; }
 </style>
 </head>
 <body>
@@ -1712,17 +1714,24 @@
               <span class="vs-label">Model</span>
               <button class="vs-btn ${videoSettings.model==='kling'?'active':''}" id="vsKling">Kling 3.0</button>
               <button class="vs-btn ${videoSettings.model==='pixverse'?'active':''}" id="vsPixverse">Pixverse v6</button>
+              <button class="vs-btn ${videoSettings.model==='seedance'?'active':''}" id="vsSeedance">Seedance 2.0</button>
             </div>
             <div class="vs-divider"></div>
-            <div class="vs-group" id="vsResGroup" style="display:${videoSettings.model==='pixverse'?'flex':'none'}">
+            <div class="vs-group" id="vsResGroup" style="display:${['pixverse','seedance'].includes(videoSettings.model)?'flex':'none'}">
               <span class="vs-label">Res</span>
               <button class="vs-btn ${videoSettings.resolution==='720p'?'active':''}" id="vs720p" data-res="720p">720p</button>
               <button class="vs-btn ${videoSettings.resolution==='1080p'?'active':''}" id="vs1080p" data-res="1080p">1080p</button>
             </div>
-            <div class="vs-divider" id="vsResDivider" style="display:${videoSettings.model==='pixverse'?'block':'none'}"></div>
-            <div class="vs-group">
+            <div class="vs-divider" id="vsResDivider" style="display:${['pixverse','seedance'].includes(videoSettings.model)?'block':'none'}"></div>
+            <div class="vs-group" id="vsAudioGroup" style="display:${videoSettings.model==='pixverse'?'flex':'none'}">
               <span class="vs-label">Audio</span>
               <button class="vs-btn ${videoSettings.audio?'active':''}" id="vsAudio">${videoSettings.audio?'On':'Off'}</button>
+            </div>
+            <div class="vs-cost-warning ${videoSettings.model==='seedance'?'show':''}" id="vsCostWarning">
+              ⚠️ <strong>Seedance 2.0 ist teuer!</strong><br>
+              720p: $1.20 / 5s &nbsp;·&nbsp; $2.40 / 10s &nbsp;·&nbsp; $3.60 / 15s<br>
+              1080p: $1.80 / 5s &nbsp;·&nbsp; $3.60 / 10s &nbsp;·&nbsp; $5.40 / 15s<br>
+              Dauer wird auf 5 / 10 / 15s gerundet. Nur 16:9 und 9:16 unterstützt.
             </div>
           </div>
           <div id="actionStatus" style="display:none;margin-top:10px;padding:10px 12px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:6px;font-size:12px;font-family:monospace;color:#50e3c2;max-height:120px;overflow-y:auto;"></div>
@@ -1755,20 +1764,28 @@
     // Video settings toggles
     const vsKling = detail.querySelector('#vsKling');
     const vsPixverse = detail.querySelector('#vsPixverse');
+    const vsSeedance = detail.querySelector('#vsSeedance');
     const vsResGroup = detail.querySelector('#vsResGroup');
     const vsResDivider = detail.querySelector('#vsResDivider');
+    const vsAudioGroup = detail.querySelector('#vsAudioGroup');
     const vsAudio = detail.querySelector('#vsAudio');
+    const vsCostWarning = detail.querySelector('#vsCostWarning');
     if (vsKling) {
-      vsKling.addEventListener('click', () => {
-        videoSettings.model = 'kling';
-        vsKling.classList.add('active'); vsPixverse.classList.remove('active');
-        vsResGroup.style.display = 'none'; vsResDivider.style.display = 'none';
-      });
-      vsPixverse.addEventListener('click', () => {
-        videoSettings.model = 'pixverse';
-        vsPixverse.classList.add('active'); vsKling.classList.remove('active');
-        vsResGroup.style.display = 'flex'; vsResDivider.style.display = 'block';
-      });
+      function updateModelUI() {
+        const m = videoSettings.model;
+        [vsKling, vsPixverse, vsSeedance].forEach(b => b.classList.remove('active'));
+        if (m === 'kling') vsKling.classList.add('active');
+        else if (m === 'pixverse') vsPixverse.classList.add('active');
+        else if (m === 'seedance') vsSeedance.classList.add('active');
+        const showRes = m === 'pixverse' || m === 'seedance';
+        vsResGroup.style.display = showRes ? 'flex' : 'none';
+        vsResDivider.style.display = showRes ? 'block' : 'none';
+        vsAudioGroup.style.display = m === 'pixverse' ? 'flex' : 'none';
+        vsCostWarning.classList.toggle('show', m === 'seedance');
+      }
+      vsKling.addEventListener('click', () => { videoSettings.model = 'kling'; updateModelUI(); });
+      vsPixverse.addEventListener('click', () => { videoSettings.model = 'pixverse'; updateModelUI(); });
+      vsSeedance.addEventListener('click', () => { videoSettings.model = 'seedance'; updateModelUI(); });
       detail.querySelectorAll('.vs-btn[data-res]').forEach(btn => {
         btn.addEventListener('click', () => {
           videoSettings.resolution = btn.dataset.res;
@@ -1788,7 +1805,9 @@
     if (genBtn) {
       genBtn.addEventListener('click', async () => {
         const sceneCount = p.images?.length || 0;
-        const modelLabel = videoSettings.model === 'pixverse' ? `Pixverse v6 (${videoSettings.resolution}${videoSettings.audio ? ', audio' : ''})` : 'Kling 3.0';
+        const modelLabel = videoSettings.model === 'pixverse' ? `Pixverse v6 (${videoSettings.resolution}${videoSettings.audio ? ', audio' : ''})`
+          : videoSettings.model === 'seedance' ? `Seedance 2.0 (${videoSettings.resolution})`
+          : 'Kling 3.0';
         const confirmed = confirm(`Generate ${sceneCount} videos for "${p.slug}" using ${modelLabel}?\n\nThis will make ${sceneCount} API calls and incur costs. Continue?`);
         if (!confirmed) return;
         genBtn.disabled = true;

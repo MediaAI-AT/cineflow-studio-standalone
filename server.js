@@ -522,7 +522,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/cineflow/generate-videos' && req.method === 'POST') {
     const body = JSON.parse(await readBody(req));
     const safeSlug = (body.slug || '').replace(/\.\./g, '');
-    const videoModel = body.videoModel === 'pixverse' ? 'pixverse' : 'kling';
+    const videoModel = ['pixverse','seedance'].includes(body.videoModel) ? body.videoModel : 'kling';
     const generateAudio = !!body.generateAudio;
     const resolution = ['720p','1080p'].includes(body.resolution) ? body.resolution : '720p';
     (async () => {
@@ -544,6 +544,10 @@ const server = http.createServer(async (req, res) => {
             if (videoModel === 'pixverse') {
               apiUrl = 'https://api.wavespeed.ai/api/v3/pixverse/pixverse-v6/image-to-video';
               apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: Math.min(dur, 15), resolution, generate_audio_switch: generateAudio };
+            } else if (videoModel === 'seedance') {
+              const snapDur = dur <= 5 ? 5 : dur <= 10 ? 10 : 15;
+              apiUrl = 'https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0/image-to-video';
+              apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: snapDur, aspect_ratio: prod.aspect_ratio || '16:9', resolution };
             } else {
               apiUrl = 'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video';
               apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: prod.aspect_ratio || '16:9' };
@@ -655,7 +659,7 @@ const server = http.createServer(async (req, res) => {
     const body = JSON.parse(await readBody(req));
     const safeSlug = (body.slug || '').replace(/\.\./g, '');
     const sid = parseInt(body.sceneId, 10);
-    const videoModel = body.videoModel === 'pixverse' ? 'pixverse' : 'kling';
+    const videoModel = ['pixverse','seedance'].includes(body.videoModel) ? body.videoModel : 'kling';
     const generateAudio = !!body.generateAudio;
     const resolution = ['720p','1080p'].includes(body.resolution) ? body.resolution : '720p';
     (async () => {
@@ -680,6 +684,10 @@ const server = http.createServer(async (req, res) => {
         if (videoModel === 'pixverse') {
           apiUrl = 'https://api.wavespeed.ai/api/v3/pixverse/pixverse-v6/image-to-video';
           apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: Math.min(dur, 15), resolution, generate_audio_switch: generateAudio };
+        } else if (videoModel === 'seedance') {
+          const snapDur = dur <= 5 ? 5 : dur <= 10 ? 10 : 15;
+          apiUrl = 'https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0/image-to-video';
+          apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: snapDur, aspect_ratio: aspectRatio, resolution };
         } else {
           apiUrl = 'https://api.wavespeed.ai/api/v3/kwaivgi/kling-v3.0-std/image-to-video';
           apiBody = { image: `data:image/png;base64,${fs.readFileSync(imgFile).toString('base64')}`, prompt: scene.video_prompt || 'Cinematic motion, slow push-in', duration: dur, aspect_ratio: aspectRatio };
