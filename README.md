@@ -39,7 +39,7 @@ CineFlow Studio is a standalone Node.js application that turns a written concept
 - **Node.js 18+**
 - **FFmpeg** (for final video merge) — must be in your PATH
 - API keys:
-  - [`WAVESPEED_API_KEY`](https://wavespeed.ai) — for image editing + video generation
+  - [`WAVESPEED_API_KEY`](https://wavespeed.ai/?ref=krzysztof) — for image editing + video generation
   - [`GEMINI_API_KEY`](https://aistudio.google.com) — for script generation + image generation
 
 ---
@@ -132,7 +132,7 @@ cineflow-standalone/
 
 | Key | Where to get it |
 |-----|----------------|
-| `WAVESPEED_API_KEY` | [wavespeed.ai](https://wavespeed.ai) |
+| `WAVESPEED_API_KEY` | [wavespeed.ai](https://wavespeed.ai/?ref=krzysztof) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
 
 ---
