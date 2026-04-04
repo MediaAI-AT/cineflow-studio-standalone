@@ -2,6 +2,12 @@
 
 **AI-powered cinematic video production — from story to final cut, scene by scene.**
 
+## Screenshots
+
+![CineFlow Studio Dashboard](assets/screenshot-dashboard.png)
+
+![Scene Grid with Video Prompts](assets/screenshot-scenes.png)
+
 CineFlow Studio is a standalone Node.js application that turns a written concept into a full video production. It generates a scene-by-scene script using Gemini AI, creates images for each scene, lets you generate videos via WaveSpeed (Kling, Pixverse, or Seedance), and merges everything into a final video with FFmpeg.
 
 ---
