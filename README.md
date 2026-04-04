@@ -152,3 +152,7 @@ cineflow-standalone/
 ## License
 
 MIT
+
+---
+
+If you find this project useful, a ⭐ on GitHub would mean a lot — thank you!
