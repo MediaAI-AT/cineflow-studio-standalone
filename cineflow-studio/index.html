@@ -1708,6 +1708,7 @@
             <button class="action-btn" id="genVideosBtn">🎬 Generate Videos</button>
             <button class="action-btn" id="redownloadBtn">⬇️ Re-download Clips</button>
             <button class="action-btn" id="mergeBtn">🎞️ Merge with FFmpeg</button>
+            <button class="action-btn" id="enhanceSeedanceBtn" style="background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.4);color:#f5a623;" title="Rewrite all video prompts in Seedance 2.0 structured format">✨ Enhance for Seedance</button>
           </div>
           <div class="video-settings-row">
             <div class="vs-group">
@@ -1797,6 +1798,32 @@
         videoSettings.audio = !videoSettings.audio;
         vsAudio.classList.toggle('active', videoSettings.audio);
         vsAudio.textContent = videoSettings.audio ? 'On' : 'Off';
+      });
+    }
+
+    // Enhance for Seedance button
+    const enhanceSeedanceBtn = detail.querySelector('#enhanceSeedanceBtn');
+    if (enhanceSeedanceBtn) {
+      enhanceSeedanceBtn.addEventListener('click', async () => {
+        const confirmed = confirm(`Rewrite all video prompts for "${p.slug}" in Seedance 2.0 structured format?\n\nThis uses Gemini AI and overwrites the existing prompts. You can still edit them per-scene afterwards.`);
+        if (!confirmed) return;
+        enhanceSeedanceBtn.disabled = true;
+        enhanceSeedanceBtn.textContent = '⏳ Enhancing...';
+        showStatus('Rewriting prompts for Seedance 2.0...', '#f5a623');
+        try {
+          const r = await fetch(`${BASE}/api/cineflow/enhance-seedance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: p.slug }) });
+          const data = await r.json();
+          if (data.error) { showStatus(`Error: ${data.error}`, '#ff4d4d'); }
+          else {
+            showStatus(`✅ Enhanced ${data.scenes?.length || 0} prompts for Seedance 2.0`, '#50e3c2');
+            // Switch model selector to Seedance
+            videoSettings.model = 'seedance';
+            if (typeof updateModelUI === 'function') updateModelUI();
+            // Refresh project to show updated prompts
+            setTimeout(() => loadAndRenderProject(p.slug), 800);
+          }
+        } catch (e) { showStatus(`Error: ${e.message}`, '#ff4d4d'); }
+        finally { enhanceSeedanceBtn.disabled = false; enhanceSeedanceBtn.textContent = '✨ Enhance for Seedance'; }
       });
     }
 

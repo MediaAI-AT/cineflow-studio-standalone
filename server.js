@@ -158,16 +158,22 @@ Output ONLY the YAML block, nothing else.` });
   return text;
 }
 
-async function cineflowGenerate(slug, lang, aspectRatio = '16:9') {
+async function cineflowGenerate(slug, lang, aspectRatio = '16:9', videoModel = 'kling') {
   const { GEMINI_API_KEY } = readEnvFile();
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set in .env');
 
   const analysisYaml = fs.readFileSync(path.join(ROOT, 'projects', slug, 'analysis.yaml'), 'utf8');
 
+  const isSeedance = videoModel === 'seedance';
+
+  const videoPromptInstruction = isSeedance
+    ? `video_prompt: A structured Seedance 2.0 prompt. Write it as a single flowing paragraph (NOT bullet points) that covers: primary camera movement and angle, main subject action and motion, key visual effects (speed ramps, digital zoom, motion blur), lighting behavior, transition style at the end. Be specific with speed percentages and effect names. Example: "Slow push-in from wide angle, subject walks toward camera at approximately 20% speed with subtle motion blur trailing behind, golden hour light rakes across the frame, speed ramp accelerates to 100% in final 0.5 seconds before hard cut."`
+    : `video_prompt: "Video motion description"`;
+
   let text = (await apiRequest(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`,
     {
-      contents: [{ role: 'user', parts: [{ text: `You are a professional music video producer.
+      contents: [{ role: 'user', parts: [{ text: `You are a professional music video producer${isSeedance ? ' with expertise in AI video generation for Seedance 2.0' : ''}.
 Based on this scene analysis YAML, generate a complete production package as a single JSON object.
 
 ANALYSIS:
@@ -180,10 +186,17 @@ Generate a JSON object with this exact structure:
   "script": "Narrative script/voiceover text",
   "music_prompt": "Music generation prompt",
   "scenes": [
-    { "id": 1, "title": "Scene title", "image_prompt": "Detailed safe image prompt - NO violence, blood, or gore.", "video_prompt": "Video motion description" }
+    { "id": 1, "title": "Scene title", "image_prompt": "Detailed safe image prompt - NO violence, blood, or gore.", ${videoPromptInstruction} }
   ]
 }
-
+${isSeedance ? `
+IMPORTANT for video_prompt (Seedance 2.0 format):
+- Write as a single flowing paragraph, not bullet points
+- Include: camera movement + angle, subject action, visual effects with specific names, speed info (use percentages), lighting, transition
+- Be cinematic and technically specific — "digital zoom (scale-in) 2x over 1.5 seconds" not just "zoom in"
+- Alternate energy density across scenes: some slow/atmospheric, some high-density/effects-heavy
+- Each scene should feel like a distinct shot in a professional music video
+` : ''}
 Output language: ${lang === 'DE' ? 'German' : 'English'}
 Output ONLY valid JSON, no markdown, no explanation.` }] }],
       generationConfig: { temperature: 0.6, maxOutputTokens: 8192, responseMimeType: 'application/json' }
@@ -195,8 +208,60 @@ Output ONLY valid JSON, no markdown, no explanation.` }] }],
 
   const production = JSON.parse(text);
   production.aspect_ratio = aspectRatio || '16:9';
+  production.video_model = videoModel;
   fs.writeFileSync(path.join(ROOT, 'projects', slug, 'production.json'), JSON.stringify(production, null, 2), 'utf8');
   return production;
+}
+
+// ── Enhance existing video prompts to Seedance 2.0 structured format ──
+async function enhanceSeedancePrompts(slug) {
+  const { GEMINI_API_KEY } = readEnvFile();
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set in .env');
+
+  const prodPath = path.join(ROOT, 'projects', slug, 'production.json');
+  const prod = JSON.parse(fs.readFileSync(prodPath, 'utf8'));
+  const scenes = prod.scenes || [];
+
+  const sceneSummary = scenes.map(s => `Scene ${s.id} "${s.title}": ${s.video_prompt}`).join('\n');
+
+  const resp = await apiRequest(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      contents: [{ role: 'user', parts: [{ text: `You are an expert at writing AI video generation prompts optimised for Seedance 2.0.
+
+Rewrite each of the following scene video prompts into the Seedance 2.0 structured format.
+Each rewritten prompt must be a single flowing paragraph that includes:
+- Primary camera movement and angle (e.g. "slow push-in from low angle")
+- Subject action and motion with specific detail
+- Visual effects with precise names and parameters (e.g. "speed ramp deceleration to 20% speed", "digital zoom scale-in 2x")
+- Lighting behaviour (e.g. "golden hour side light rakes across face")
+- Motion blur, atmospheric effects where appropriate
+- Transition style at end of shot
+
+Vary the energy density — alternate between high-intensity (multiple stacked effects) and low-intensity (atmospheric, minimal effects) scenes.
+
+SCENES TO REWRITE:
+${sceneSummary}
+
+Return a JSON array with this exact structure:
+[{ "id": 1, "video_prompt": "rewritten prompt here" }, ...]
+
+Output ONLY valid JSON, no markdown, no explanation.` }] }],
+      generationConfig: { temperature: 0.5, maxOutputTokens: 8192, responseMimeType: 'application/json' }
+    }
+  );
+
+  let text = resp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const enhanced = JSON.parse(text);
+
+  for (const e of enhanced) {
+    const scene = scenes.find(s => s.id === e.id);
+    if (scene) scene.video_prompt = e.video_prompt;
+  }
+  prod.video_model = 'seedance';
+  fs.writeFileSync(prodPath, JSON.stringify(prod, null, 2), 'utf8');
+  return prod;
 }
 
 async function cineflowImages(slug, refs, aspectRatio = '16:9') {
@@ -257,7 +322,7 @@ async function cineflowImages(slug, refs, aspectRatio = '16:9') {
   }
 }
 
-async function runPipeline(slug, description, scenes, lang, aspectRatio, refs, audioFile) {
+async function runPipeline(slug, description, scenes, lang, aspectRatio, refs, audioFile, videoModel = 'kling') {
   try {
     pipelineState.step = 'analyze'; pipelineState.progress = 10;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
@@ -265,7 +330,7 @@ async function runPipeline(slug, description, scenes, lang, aspectRatio, refs, a
 
     pipelineState.step = 'generate'; pipelineState.progress = 35;
     broadcast({ type: 'pipeline:progress', ...pipelineState });
-    const prod = await cineflowGenerate(slug, lang, aspectRatio);
+    const prod = await cineflowGenerate(slug, lang, aspectRatio, videoModel);
 
     pipelineState.step = 'images'; pipelineState.progress = 50;
     pipelineState.total = prod.scenes?.length || 0;
@@ -494,12 +559,23 @@ const server = http.createServer(async (req, res) => {
   // ── API: run pipeline ──
   if (pathname === '/api/cineflow/run' && req.method === 'POST') {
     try {
-      const { slug, description, scenes, lang, aspectRatio, refs, audioFile } = JSON.parse(await readBody(req));
+      const { slug, description, scenes, lang, aspectRatio, refs, audioFile, videoModel } = JSON.parse(await readBody(req));
       if (!slug || !description) { sendJSON(res, { error: 'slug and description required' }, 400); return; }
       if (pipelineState?.status === 'running') { sendJSON(res, { error: 'Pipeline already running' }, 409); return; }
       pipelineState = { status: 'running', slug, step: 'analyze', progress: 0, current: 0, total: 0, logs: [], error: null, startedAt: Date.now() };
-      runPipeline(slug, description, scenes || 10, lang || 'EN', aspectRatio || '16:9', refs || [], audioFile || null).catch(() => {});
+      runPipeline(slug, description, scenes || 10, lang || 'EN', aspectRatio || '16:9', refs || [], audioFile || null, videoModel || 'kling').catch(() => {});
       sendJSON(res, { ok: true, slug });
+    } catch (e) { sendJSON(res, { error: e.message }, 500); }
+    return;
+  }
+
+  // ── API: enhance prompts for Seedance 2.0 ──
+  if (pathname === '/api/cineflow/enhance-seedance' && req.method === 'POST') {
+    try {
+      const { slug } = JSON.parse(await readBody(req));
+      if (!slug) { sendJSON(res, { error: 'slug required' }, 400); return; }
+      const prod = await enhanceSeedancePrompts(slug.replace(/\.\./g, ''));
+      sendJSON(res, { ok: true, scenes: prod.scenes.map(s => ({ id: s.id, video_prompt: s.video_prompt })) });
     } catch (e) { sendJSON(res, { error: e.message }, 500); }
     return;
   }
